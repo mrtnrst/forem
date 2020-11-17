@@ -5,11 +5,11 @@
 <header class="crayons-layout crayons-layout--limited-l crayons-layout--1-col p-4 block s:flex items-center space-between">
   <h1 class="crayons-title">Search results</h1>
 
-  <div class="js-search-form block s:hidden py-2">
+  <section id="mobile-search-container" class="js-search-form block s:hidden py-2">
     <form accept-charset="UTF-8" method="get" action="/search">
       <input class="js-search-input crayons-textfield" type="text" name="q" placeholder="Search..." autocomplete="off" />
     </form>
-  </div>
+  </section>
 
   <nav id="sorting-option-tabs" class="crayons-tabs crayons-tabs--wrapped ml-auto">
     <a href="javascript:;" class="crayons-tabs__item <%= "crayons-tabs__item--current" if @current_ordering == :relevance %>">Most Relevant</a>

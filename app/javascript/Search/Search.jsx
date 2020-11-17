@@ -1,12 +1,7 @@
 import 'preact/devtools';
-import { h, Component, Fragment } from 'preact';
+import { h, Component, Fragment, createRef } from 'preact';
 import PropTypes from 'prop-types';
-import {
-  getInitialSearchTerm,
-  hasInstantClick,
-  preloadSearchResults,
-  displaySearchResults,
-} from '../utilities/search';
+import { getInitialSearchTerm, hasInstantClick } from '../utilities/search';
 import { KeyboardShortcuts } from '../shared/components/useKeyboardShortcuts';
 import { SearchForm } from './SearchForm';
 
@@ -15,33 +10,23 @@ const GLOBAL_SEARCH_KEY = 'Slash';
 const ENTER_KEY = 'Enter';
 
 export class Search extends Component {
-  static defaultProps = {
-    searchBoxId: 'nav-search',
-  };
-
   constructor(props) {
     super(props);
     this.enableSearchPageChecker = true;
     this.syncSearchUrlWithInput = this.syncSearchUrlWithInput.bind(this);
+    this.searchInputRef = createRef(null);
   }
 
   componentWillMount() {
-    let searchTerm;
+    const { searchTerm, setSearchTerm } = this.props;
 
-    ({ searchTerm } = this.state);
-    this.setState(
-      { searchTerm: getInitialSearchTerm(window.location.search) },
-      () => preloadSearchResults({ searchTerm }),
-    );
-
-    ({ searchTerm } = this.state);
     const searchPageChecker = () => {
       if (
         this.enableSearchPageChecker &&
         searchTerm !== '' &&
         /^http(s)?:\/\/[^/]+\/search/.exec(window.location.href) === null
       ) {
-        this.setState({ searchTerm: '' });
+        setSearchTerm('');
       }
 
       setTimeout(searchPageChecker, 500);
@@ -57,19 +42,17 @@ export class Search extends Component {
     // TODO: Consolidate search functionality.
     // Note that push states for search occur in _search.html.erb
     // in initializeSortingTabs(query)
-    const { searchBoxId } = this.props;
+    const { setSearchTerm } = this.props;
     const searchTerm = getInitialSearchTerm(window.location.search);
 
     // We set the value outside of React state so that there is no flickering of placeholder
     // to search term.
-    const searchBox = document.getElementById(searchBoxId);
+    const searchBox = this.searchInputRef.current;
     searchBox.value = searchTerm;
 
     // Even though we set the search term directly via the DOM, it still needs to reside
     // in component state.
-    this.setState({
-      searchTerm,
-    });
+    setSearchTerm(searchTerm);
   }
 
   componentDidMount() {
@@ -89,9 +72,10 @@ export class Search extends Component {
   submit = (event) => {
     if (hasInstantClick) {
       event.preventDefault();
+      const { setSearchTerm } = this.props;
 
-      const { searchTerm } = this.state;
-      displaySearchResults({ searchTerm });
+      const searchTerm = this.searchInputRef.current.value;
+      setSearchTerm(searchTerm);
     }
   };
 
@@ -99,17 +83,17 @@ export class Search extends Component {
     this.enableSearchPageChecker = false;
 
     if (hasInstantClick() && key === ENTER_KEY) {
-      this.setState({ searchTerm: value }, () => {
-        const { searchTerm } = this.state;
-        preloadSearchResults({ searchTerm });
-      });
+      const { setSearchTerm } = this.props;
+
+      setSearchTerm(value);
     }
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.globalKeysListener);
     window.removeEventListener('popstate', this.syncSearchUrlWithInput);
-    InstantClick.off('change', this.enableSearchPageListener);
+    InstantClick.off &&
+      InstantClick.off('change', this.enableSearchPageListener);
   }
 
   minimizeHeader = (event) => {
@@ -121,13 +105,12 @@ export class Search extends Component {
     event.preventDefault();
     document.body.classList.remove('zen-mode');
 
-    const { searchBoxId } = this.props;
-    const searchBox = document.getElementById(searchBoxId);
+    const searchBox = this.searchInputRef.current;
     searchBox.focus();
     searchBox.select();
   };
 
-  render({ searchBoxId }, { searchTerm = '' }) {
+  render({ searchTerm }) {
     return (
       <Fragment>
         <KeyboardShortcuts
@@ -146,7 +129,7 @@ export class Search extends Component {
             this.search(key, value);
           }}
           onSubmitSearch={this.submit}
-          searchBoxId={searchBoxId}
+          ref={this.searchInputRef}
         />
       </Fragment>
     );
@@ -154,5 +137,6 @@ export class Search extends Component {
 }
 
 Search.propTypes = {
-  searchBoxId: PropTypes.string,
+  searchTerm: PropTypes.string.isRequired,
+  setSearchTerm: PropTypes.func.isRequired,
 };
